@@ -32,21 +32,20 @@ jobs:
           gomobile init
           gomobile version
 
-      # 关键修复：下载旧 NDK (r23，支持 API 16)，设置 ANDROID_NDK_HOME
-      - name: Install compatible NDK (r23 for gomobile compatibility)
+      - name: Install compatible NDK (r23 for gomobile)
         run: |
           wget https://dl.google.com/android/repository/android-ndk-r23c-linux.zip -O ndk.zip
           unzip ndk.zip -d $HOME/android-ndk
           export ANDROID_NDK_HOME=$HOME/android-ndk/android-ndk-r23c
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
-          echo "Using NDK: $ANDROID_NDK_HOME"
 
-     # - name: Build Go bindings (with custom NDK)
-        #run: |
-         # cd ci
-          #gomobile bind -target=android -o ../android/pikapika.aar ./...
-          # 如果报 no buildable packages，尝试：
-          # gomobile bind -target=android -o ../android/pikapika.aar ./cmd/... ./commons
+      - name: Build Go bindings (bind commons package only)
+        run: |
+          cd ci
+          gomobile bind -target=android \
+            -o ../android/pikapika.aar \
+            ./commons
+          ls -la ../android/pikapika.aar || echo "aar not generated!"
 
       - name: Build APK
         run: flutter build apk --release --split-per-abi
