@@ -23,13 +23,12 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.25'  # 升级到 1.25，兼容 gomobile latest
 
-      - name: Install gomobile (compatible commit + fix dependencies)
+      - name: Install gomobile (latest with Go 1.25)
         run: |
-          go install golang.org/x/mobile/cmd/gomobile@b56b3793a9c4d32d268100ae916f12316aa05d47
-          go get golang.org/x/mobile/bind
-          go get golang.org/x/mobile/cmd/gobind
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          go install golang.org/x/mobile/cmd/gobind@latest  # 额外安装 gobind，避免 import bind 失败
           export PATH=$PATH:$(go env GOPATH)/bin
           gomobile init
           gomobile version
@@ -41,7 +40,7 @@ jobs:
           export ANDROID_NDK_HOME=$HOME/android-ndk/android-ndk-r23c
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
 
-      - name: Build Go bindings (commons package)
+      - name: Build Go bindings (commons package only)
         run: |
           cd ci
           gomobile bind -target=android -o ../android/pikapika.aar ./commons
