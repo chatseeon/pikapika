@@ -23,30 +23,29 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'  # 必须用 1.25+ 才能 install gomobile@latest
+          go-version: '1.25'
 
-      - name: Install gomobile & gobind (fix dependency)
+      - name: Install gomobile & fix bind dependency
         run: |
-          # 先安装 gomobile 和 gobind
           go install golang.org/x/mobile/cmd/gomobile@latest
           go install golang.org/x/mobile/cmd/gobind@latest
-          # 手动确保 bind 包可用（CI 环境常见坑）
-          go mod init temp-mod  # 临时创建模块，让 go get 工作
+          # 临时模块模式拉取 bind 包（CI 关键）
+          go mod init temp-fix
           go get golang.org/x/mobile/bind
           go get golang.org/x/mobile/cmd/gobind
-          rm go.mod go.sum  # 清理临时模块
+          rm go.mod go.sum  # 清理
           export PATH=$PATH:$(go env GOPATH)/bin
           gomobile init
           gomobile version
 
-      - name: Install compatible NDK (r23 for gomobile API 16 compatibility)
+      - name: Install compatible NDK (r23)
         run: |
           wget https://dl.google.com/android/repository/android-ndk-r23c-linux.zip -O ndk.zip
           unzip ndk.zip -d $HOME/android-ndk
           export ANDROID_NDK_HOME=$HOME/android-ndk/android-ndk-r23c
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
 
-      - name: Build Go bindings (only commons - non-main package)
+      - name: Build Go bindings (only commons)
         run: |
           cd ci
           gomobile bind -target=android -o ../android/pikapika.aar ./commons
