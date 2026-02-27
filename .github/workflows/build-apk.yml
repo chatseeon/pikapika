@@ -41,10 +41,10 @@ jobs:
           echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
           echo "Using NDK: $ANDROID_NDK_HOME"
 
-      - name: Build Go bindings (with custom NDK)
-        run: |
-          cd ci
-          gomobile bind -target=android -o ../android/pikapika.aar ./...
+     # - name: Build Go bindings (with custom NDK)
+        #run: |
+         # cd ci
+          #gomobile bind -target=android -o ../android/pikapika.aar ./...
           # 如果报 no buildable packages，尝试：
           # gomobile bind -target=android -o ../android/pikapika.aar ./cmd/... ./commons
 
