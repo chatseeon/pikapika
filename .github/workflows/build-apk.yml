@@ -23,20 +23,29 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'  # 兼容项目，避开 1.25 坑
+          go-version: '1.23'
 
-      - name: Install gomobile (use compatible commit b56b379 from Feb 2026)
+      - name: Install gomobile (compatible commit)
         run: |
           go install golang.org/x/mobile/cmd/gomobile@b56b3793a9c4d32d268100ae916f12316aa05d47
           export PATH=$PATH:$(go env GOPATH)/bin
           gomobile init
-          gomobile version  # 应该输出 gomobile version +b56b379 或类似
+          gomobile version
 
-      - name: Build Go bindings (manual, cd to ci/)
+      # 关键修复：下载旧 NDK (r23，支持 API 16)，设置 ANDROID_NDK_HOME
+      - name: Install compatible NDK (r23 for gomobile compatibility)
+        run: |
+          wget https://dl.google.com/android/repository/android-ndk-r23c-linux.zip -O ndk.zip
+          unzip ndk.zip -d $HOME/android-ndk
+          export ANDROID_NDK_HOME=$HOME/android-ndk/android-ndk-r23c
+          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
+          echo "Using NDK: $ANDROID_NDK_HOME"
+
+      - name: Build Go bindings (with custom NDK)
         run: |
           cd ci
           gomobile bind -target=android -o ../android/pikapika.aar ./...
-          # 如果失败报 no buildable packages，改成下面一行试试（指定 cmd/ 包）
+          # 如果报 no buildable packages，尝试：
           # gomobile bind -target=android -o ../android/pikapika.aar ./cmd/... ./commons
 
       - name: Build APK
