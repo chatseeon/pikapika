@@ -14,7 +14,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.7.3'  # 项目推荐版本
+          flutter-version: '3.7.3'  # 项目推荐，保持不变
           channel: 'stable'
 
       - name: Install Flutter dependencies
@@ -23,31 +23,34 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.18'
+          go-version: '1.23'  # 关键升级！解决 gomobile go.mod 解析错误
 
       - name: Install gomobile & prepare PATH
         run: |
           go install golang.org/x/mobile/cmd/gomobile@latest
-          gomobile version   # 验证安装
-          export PATH=$PATH:$(go env GOPATH)/bin
-          which gomobile     # 确认在 PATH 中
+          gomobile version   # 打印版本验证成功
+          export PATH=$$   PATH:   $$(go env GOPATH)/bin
+          which gomobile     # 确认命令可用
 
       - name: Build Go bindings (manual for ci/ directory)
         run: |
-          # 进入 ci/ （go.mod 在这里），绑定整个模块或 cmd 包
+          # 进入 ci/ （项目 go.mod 在 ci/）
           cd ci
           gomobile bind -target=android \
             -o ../android/pikapika.aar \
-            ./...   # 绑定 ci/ 下所有可构建包（包括 cmd/ 的 main.go）
-          # 如果失败，尝试指定主包（根据实际 main.go 位置调整）
-          # gomobile bind -target=android -o ../android/pikapika.aar ./cmd/check_asset
+            ./...  # 绑定 ci/ 下所有包（cmd/ commons 等）
+          # 如果报 "no buildable packages"，试指定：
+          # gomobile bind -target=android -o ../android/pikapika.aar ./cmd/... 
 
       - name: Build APK
         run: flutter build apk --release --split-per-abi
 
-      - name: Upload artifacts
+      - name: List built files for debug
+        run: ls -la build/app/outputs/flutter-apk/ || ls -la android/ || true
+
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: pikapika-apks
           path: build/app/outputs/flutter-apk/app-*.apk
-          retention-days: 7
+          if-no-files-found: warn
