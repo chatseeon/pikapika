@@ -20,8 +20,28 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
+      - name: Cache Gradle
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/gradle/wrapper/gradle-wrapper.properties') }}
+
+      - name: Clean Gradle
+        run: cd android && ./gradlew clean || true
+
+      - name: Create debug keystore for release build
+        run: |
+          keytool -genkey -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+
       - name: Build APK
         run: flutter build apk --release --split-per-abi --verbose
+        env:
+          ANDROID_KEYSTORE_PATH: debug.keystore
+          ANDROID_KEYSTORE_PASSWORD: android
+          ANDROID_KEY_ALIAS: androiddebugkey
+          ANDROID_KEY_PASSWORD: android
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
