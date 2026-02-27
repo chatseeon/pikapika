@@ -1,0 +1,49 @@
+name: Build Pikapika Android APK
+
+on:
+  workflow_dispatch:  # 手动触发（最重要！点一下就 build）
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.22.2'  # 稳定版，项目兼容 3.7+，可改成 '3.x' 用最新
+        channel: 'stable'
+
+    - name: Install Flutter dependencies
+      run: flutter pub get
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'  # 项目 README 用 1.17/1.18，但最新 Go 兼容更好
+
+    # 如果项目有 Go bindings build 步骤（pikapika 很可能需要 gomobile）
+    # 检查项目根或 android/ 目录是否有 build 脚本；如果有，改成运行它
+    # 这里先假设需要手动 gomobile bind（常见于 gomobile 项目）
+    - name: Install gomobile
+      run: go install golang.org/x/mobile/cmd/gomobile@latest && gomobile init
+
+    - name: Build Go bindings for Android (adjust if project has script)
+      run: |
+        # 如果项目有特定 build 命令（如 ./build_android.sh），替换下面
+        # 示例：假设在根目录有 gomobile bind
+        gomobile bind -target=android -o=android/pikapika.aar ./some_go_package  # 改成项目实际路径！
+        # 如果报错，看 Actions log 再调整（常见需要 cd 到 Go 模块目录）
+
+    - name: Build APK (release, split per ABI for smaller size)
+      run: flutter build apk --release --split-per-abi
+
+    - name: Upload APK artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: pikapika-release-apks
+        path: build/app/outputs/flutter-apk/app-*.apk  # 会上传 arm64、x86 等多个
+        retention-days: 7
