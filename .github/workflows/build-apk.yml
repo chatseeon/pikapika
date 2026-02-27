@@ -1,7 +1,7 @@
 name: Build Pikapika Android APK
 
 on:
-  workflow_dispatch:          # 手动触发按钮（最实用）
+  workflow_dispatch:
 
 jobs:
   build:
@@ -14,7 +14,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.7.3'   # 项目 README 推荐版本，避免兼容坑
+          flutter-version: '3.7.3'  # 项目推荐版本
           channel: 'stable'
 
       - name: Install Flutter dependencies
@@ -23,46 +23,31 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.18'         # 项目兼容版本
+          go-version: '1.18'
 
-      - name: Make scripts executable
+      - name: Install gomobile & prepare PATH
         run: |
-          chmod +x ./scripts/*.sh || true   # 确保所有脚本可执行，失败也不中断
+          go install golang.org/x/mobile/cmd/gomobile@latest
+          gomobile version   # 验证安装
+          export PATH=$PATH:$(go env GOPATH)/bin
+          which gomobile     # 确认在 PATH 中
 
-      - name: Build Go bindings for Android (using project script)
+      - name: Build Go bindings (manual for ci/ directory)
         run: |
-          if [ -f "./scripts/bind-android-arm64.sh" ]; then
-            echo "Running project bind-android-arm64.sh"
-            ./scripts/bind-android-arm64.sh
-          else
-            echo "bind-android-arm64.sh not found, trying bind-android-debug.sh as fallback"
-            if [ -f "./scripts/bind-android-debug.sh" ]; then
-              ./scripts/bind-android-debug.sh
-            else
-              echo "No bind script found! Check project scripts/ directory."
-              exit 1
-            fi
-          fi
+          # 进入 ci/ （go.mod 在这里），绑定整个模块或 cmd 包
+          cd ci
+          gomobile bind -target=android \
+            -o ../android/pikapika.aar \
+            ./...   # 绑定 ci/ 下所有可构建包（包括 cmd/ 的 main.go）
+          # 如果失败，尝试指定主包（根据实际 main.go 位置调整）
+          # gomobile bind -target=android -o ../android/pikapika.aar ./cmd/check_asset
 
-      - name: Build APK using project script (preferred)
-        run: |
-          if [ -f "./scripts/build-apk-arm64.sh" ]; then
-            echo "Running project build-apk-arm64.sh"
-            ./scripts/build-apk-arm64.sh
-          else
-            echo "build-apk-arm64.sh not found, fallback to flutter build"
-            flutter build apk --release --split-per-abi
-          fi
+      - name: Build APK
+        run: flutter build apk --release --split-per-abi
 
-      - name: List built APK files for debug
-        run: ls -la build/app/outputs/flutter-apk/ || true
-
-      - name: Upload APK artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pikapika-release-apks
-          path: |
-            build/app/outputs/flutter-apk/*.apk
-            build/app/outputs/**/*.apk   # 覆盖可能的不同输出路径
+          name: pikapika-apks
+          path: build/app/outputs/flutter-apk/app-*.apk
           retention-days: 7
-          if-no-files-found: warn       # 如果没找到文件，给警告但不失败
