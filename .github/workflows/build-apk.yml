@@ -23,27 +23,33 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.23'  # 兼容项目，避开 1.25 坑
 
-      - name: Install gomobile (compatible pseudo-version)
+      - name: Install gomobile (use compatible commit b56b379 from Feb 2026)
         run: |
-          # 用兼容 commit，避免 Go 1.25 要求
-          go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20260209120000-923679eb55af
+          go install golang.org/x/mobile/cmd/gomobile@b56b3793a9c4d32d268100ae916f12316aa05d47
           export PATH=$PATH:$(go env GOPATH)/bin
           gomobile init
-          gomobile version  # 验证成功
+          gomobile version  # 应该输出 gomobile version +b56b379 或类似
 
-      - name: Build Go bindings (for ci/ directory)
+      - name: Build Go bindings (manual, cd to ci/)
         run: |
           cd ci
           gomobile bind -target=android -o ../android/pikapika.aar ./...
+          # 如果失败报 no buildable packages，改成下面一行试试（指定 cmd/ 包）
+          # gomobile bind -target=android -o ../android/pikapika.aar ./cmd/... ./commons
 
       - name: Build APK
         run: flutter build apk --release --split-per-abi
+
+      - name: Debug output files
+        run: |
+          ls -la build/app/outputs/flutter-apk/ || true
+          ls -la android/ || true
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: pikapika-apks
           path: build/app/outputs/flutter-apk/app-*.apk
-          if-no-files-found: warn
+          retention-days: 7
