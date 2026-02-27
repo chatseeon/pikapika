@@ -14,7 +14,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.7.3'  # 项目推荐，保持不变
+          flutter-version: '3.7.3'
           channel: 'stable'
 
       - name: Install Flutter dependencies
@@ -23,34 +23,28 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'  # 关键升级！解决 gomobile go.mod 解析错误
+          go-version: '1.23'  # 保持 1.23，兼容项目
 
-      - name: Install gomobile & prepare PATH
+      - name: Install gomobile (compatible version)
         run: |
-          go install golang.org/x/mobile/cmd/gomobile@latest
-          gomobile version   # 打印版本验证成功
-          export PATH=$$   PATH:   $$(go env GOPATH)/bin
-          which gomobile     # 确认命令可用
+          # 用 gomobile 旧 commit，避免 Go 1.25 go.mod 问题
+          go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20230124165332-4d4f5b0a2a3f  # 这个 commit 用 go 1.20 或更低
+          gomobile version
+          export PATH=$PATH:$(go env GOPATH)/bin
+          gomobile init  # 初始化环境
 
-      - name: Build Go bindings (manual for ci/ directory)
+      - name: Build Go bindings (for ci/ dir)
         run: |
-          # 进入 ci/ （项目 go.mod 在 ci/）
           cd ci
-          gomobile bind -target=android \
-            -o ../android/pikapika.aar \
-            ./...  # 绑定 ci/ 下所有包（cmd/ commons 等）
-          # 如果报 "no buildable packages"，试指定：
-          # gomobile bind -target=android -o ../android/pikapika.aar ./cmd/... 
+          gomobile bind -target=android -o ../android/pikapika.aar ./...
+          # 如果报 no buildable packages，试：
+          # gomobile bind -target=android -o ../android/pikapika.aar ./cmd/... ./commons
 
       - name: Build APK
         run: flutter build apk --release --split-per-abi
 
-      - name: List built files for debug
-        run: ls -la build/app/outputs/flutter-apk/ || ls -la android/ || true
-
-      - name: Upload APK artifacts
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: pikapika-apks
           path: build/app/outputs/flutter-apk/app-*.apk
-          if-no-files-found: warn
