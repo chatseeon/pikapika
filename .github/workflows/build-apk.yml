@@ -23,28 +23,27 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'  # 保持 1.23，兼容项目
+          go-version: '1.23'
 
-      - name: Install gomobile (compatible version)
+      - name: Install gomobile (compatible pseudo-version)
         run: |
-          # 用 gomobile 旧 commit，避免 Go 1.25 go.mod 问题
-          go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20230124165332-4d4f5b0a2a3f  # 这个 commit 用 go 1.20 或更低
-          gomobile version
+          # 用兼容 commit，避免 Go 1.25 要求
+          go install golang.org/x/mobile/cmd/gomobile@v0.0.0-20260209120000-923679eb55af
           export PATH=$PATH:$(go env GOPATH)/bin
-          gomobile init  # 初始化环境
+          gomobile init
+          gomobile version  # 验证成功
 
-      - name: Build Go bindings (for ci/ dir)
+      - name: Build Go bindings (for ci/ directory)
         run: |
           cd ci
           gomobile bind -target=android -o ../android/pikapika.aar ./...
-          # 如果报 no buildable packages，试：
-          # gomobile bind -target=android -o ../android/pikapika.aar ./cmd/... ./commons
 
       - name: Build APK
         run: flutter build apk --release --split-per-abi
 
-      - name: Upload APK
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: pikapika-apks
           path: build/app/outputs/flutter-apk/app-*.apk
+          if-no-files-found: warn
