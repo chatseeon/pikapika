@@ -64,14 +64,21 @@ class _AppScreenState extends State<AppScreen> {
   @override
   Widget build(BuildContext context) {
     final body = Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _widgetOptions,
+      // 这里新增 Padding 来消费系统导航栏（navigation bar）的高度
+      // 避免 Android edge-to-edge 模式下内容被底部手势条/虚拟键遮挡
+      body: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom,
+        ),
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: _widgetOptions,
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon:  const Icon(Icons.public),
+            icon: const Icon(Icons.public),
             label: tr('app.categories'),
           ),
           BottomNavigationBarItem(
@@ -89,6 +96,7 @@ class _AppScreenState extends State<AppScreen> {
         onTap: _onItemTapped,
       ),
     );
+
     return TimeoutLock(child: willPop(body));
   }
 
