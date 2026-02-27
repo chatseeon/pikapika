@@ -20,37 +20,6 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.25'
-
-      - name: Install gomobile & fix bind dependency
-        run: |
-          go install golang.org/x/mobile/cmd/gomobile@latest
-          go install golang.org/x/mobile/cmd/gobind@latest
-          # 临时模块模式拉取 bind 包（CI 关键）
-          go mod init temp-fix
-          go get golang.org/x/mobile/bind
-          go get golang.org/x/mobile/cmd/gobind
-          rm go.mod go.sum  # 清理
-          export PATH=$PATH:$(go env GOPATH)/bin
-          gomobile init
-          gomobile version
-
-      - name: Install compatible NDK (r23)
-        run: |
-          wget https://dl.google.com/android/repository/android-ndk-r23c-linux.zip -O ndk.zip
-          unzip ndk.zip -d $HOME/android-ndk
-          export ANDROID_NDK_HOME=$HOME/android-ndk/android-ndk-r23c
-          echo "ANDROID_NDK_HOME=$ANDROID_NDK_HOME" >> $GITHUB_ENV
-
-      - name: Build Go bindings (only commons)
-        run: |
-          cd ci
-          gomobile bind -target=android -o ../android/pikapika.aar ./commons
-          ls -la ../android/pikapika.aar || echo "aar not generated!"
-
       - name: Build APK
         run: flutter build apk --release --split-per-abi --verbose
 
